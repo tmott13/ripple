@@ -1,0 +1,40 @@
+:root {
+  --ink: #0e2a3b;
+  --paper: #f1f8f8;
+  --teal: #0b9e98;
+  --teal-dark: #087a76;
+  --aqua: #d3f1ee;
+  --foam: #e8f6f5;
+  --line: #cfe2e2;
+  --muted: #5b7380;
+  --warn: #fff1d6;
+  --shadow: 0 8px 24px rgba(14, 42, 59, 0.08);
+  color-scheme: light;
+}
+* {
+  box-sizing: border-box;
+}
+html,
+body {
+  margin: 0;
+  color: var(--ink);
+  background:
+    radial-gradient(1200px 600px at 85% -10%, #d6f2ef 0%, transparent 60%),
+    var(--paper);
+  font-family:
+    ui-rounded,
+    "SF Pro Rounded",
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    sans-serif;
+  -webkit-text-size-adjust: 100%;
+  min-height: 100vh;
+}
+button {
+  font: inherit;
+  cursor: pointer;
+}
+a {
+  color: var(--teal-dark);
+}

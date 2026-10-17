@@ -1,0 +1,298 @@
+<header class="top">
+  <div class="brand">
+    <svg class="logo" viewBox="0 0 56 56" aria-hidden="true">
+      <rect width="56" height="56" rx="16" fill="#0e2a3b" />
+      <path
+        d="M28 9a18 18 0 1 1-9.4 33.4L10 45l2.6-8.4A18 18 0 0 1 28 9Z"
+        fill="none"
+        stroke="#2cc4bb"
+        stroke-width="2.6"
+        stroke-linejoin="round"
+      />
+      <path
+        d="M28 18c.9 4.6 2.4 6.1 7 7-4.6.9-6.1 2.4-7 7-.9-4.6-2.4-6.1-7-7 4.6-.9 6.1-2.4 7-7Z"
+        fill="#5fe0d6"
+      />
+      <circle cx="36.5" cy="18.5" r="1.6" fill="#2cc4bb" />
+    </svg>
+    <div>
+      <h1>Ripple</h1>
+      <p>One post. Every platform. Written privately in your browser.</p>
+    </div>
+  </div>
+  <span class="pill" [class.ok]="ai.state() === 'ready'">
+    @switch (ai.state()) { @case ('ready') { ✨ Gemma ready on this device }
+    @case ('unsupported') { Needs WebGPU } @case ('downloading') { Downloading
+    Gemma… {{ ai.progress() }}% } @case ('loading') { Waking Gemma… {{
+    ai.progress() }}% } @default { Gemma not loaded } }
+  </span>
+</header>
+
+<main>
+  <section class="intro">
+    <p>
+      You just published a post. Now you have to rewrite it for every app.
+      <b>Ripple</b> turns one post into a Substack Note, an Instagram caption, a
+      LinkedIn post and a short post, using a Gemma model that runs
+      <b>in your browser</b>. Your drafts never leave your device.
+    </p>
+  </section>
+
+  @if (ai.state() !== 'ready') { <ng-container *ngTemplateOutlet="gemma" /> }
+
+  <div class="grid">
+    <!-- ============ LEFT: input ============ -->
+    <section class="card input">
+      <div class="row-between">
+        <h2>1 · Your post</h2>
+        <div class="row">
+          <button class="ghost small" (click)="useSample()">
+            Try a sample
+          </button>
+          @if (post().body) {
+          <button class="ghost small" (click)="clearAll()">Clear</button> }
+        </div>
+      </div>
+
+      <label
+        ><span class="lbl">Title <span class="opt">(optional)</span></span>
+        <input
+          [value]="post().title"
+          (input)="setPost('title', $event)"
+          placeholder="e.g. I Finally Raised My Prices"
+        />
+      </label>
+      <label
+        ><span class="lbl"
+          >Link to the post <span class="opt">(optional)</span></span
+        >
+        <input
+          type="url"
+          [value]="post().link"
+          (input)="setPost('link', $event)"
+          placeholder="https://…"
+        />
+      </label>
+      <label
+        ><span class="lbl">Post text</span>
+        <textarea
+          rows="12"
+          [value]="post().body"
+          (input)="setPost('body', $event)"
+          placeholder="Paste your blog post, newsletter or article here."
+        ></textarea>
+      </label>
+      <p class="hint">
+        {{ words() }} words @if (words() > 0 && words() < 40) { · paste a little
+        more so Gemma has something to work with }
+      </p>
+
+      <h2>2 · Your voice</h2>
+      <div class="seg" role="radiogroup" aria-label="Tone">
+        @for (t of tones; track t.id) {
+        <button
+          role="radio"
+          [attr.aria-checked]="settings().tone === t.id"
+          [class.on]="settings().tone === t.id"
+          (click)="setSetting('tone', t.id)"
+        >
+          {{ t.label }}
+        </button>
+        }
+      </div>
+      <label
+        ><span class="lbl"
+          >Sign-off <span class="opt">(added to Instagram)</span></span
+        >
+        <input
+          [value]="settings().signoff"
+          (input)="setSetting('signoff', inputValue($event))"
+          placeholder="e.g. 🖤 Tanya"
+        />
+      </label>
+      <label class="check">
+        <input
+          type="checkbox"
+          [checked]="settings().hashtags"
+          (change)="setSetting('hashtags', !settings().hashtags)"
+        />
+        Add hashtags
+      </label>
+
+      <h2>3 · Where it's going</h2>
+      <div class="chips">
+        @for (p of platforms; track p.id) {
+        <button
+          class="chip"
+          [class.on]="picked().has(p.id)"
+          [attr.aria-pressed]="picked().has(p.id)"
+          (click)="toggle(p.id)"
+        >
+          {{ p.icon }} {{ p.label }}
+        </button>
+        }
+      </div>
+
+      @if (running()) {
+      <button class="primary wide" (click)="stop()">■ Stop</button>
+      } @else {
+      <button
+        class="primary wide"
+        [disabled]="!canWrite()"
+        (click)="writeAll()"
+      >
+        ✨ Write {{ picked().size }} {{ picked().size === 1 ? 'draft' : 'drafts'
+        }}
+      </button>
+      } @if (ai.state() !== 'ready') {
+      <p class="hint center">
+        Load Gemma below first. It's a one-time download.
+      </p>
+      }
+    </section>
+
+    <!-- ============ RIGHT: drafts ============ -->
+    <section class="outs">
+      @for (p of platforms; track p.id) { @if (picked().has(p.id)) { @let d =
+      drafts()[p.id];
+      <article class="card out" [class.writing]="d.status === 'writing'">
+        <div class="row-between">
+          <h3>{{ p.icon }} {{ p.label }}</h3>
+          @if (d.text) {
+          <span class="count" [class.over]="count(p) > p.limit"
+            >{{ count(p) }} / {{ p.limit }}</span
+          >
+          }
+        </div>
+
+        @switch (d.status) { @case ('writing') {
+        <p class="live">
+          {{ d.live || 'Thinking…' }}<span class="caret"></span>
+        </p>
+        } @case ('queued') {
+        <p class="muted">Up next…</p>
+        } @case ('error') {
+        <p class="muted">
+          Gemma didn't write anything useful this time. Try again.
+        </p>
+        } @default { @if (d.text) {
+        <textarea
+          class="draft"
+          rows="7"
+          [value]="d.text"
+          (input)="edit(p.id, $event)"
+          aria-label="{{ p.label }} draft"
+        ></textarea>
+        } @else {
+        <p class="muted">Your draft will appear here.</p>
+        } } } @if (d.flags.length && d.status !== 'writing') {
+        <p class="flag">
+          ⚠️ Check {{ d.flags.length === 1 ? 'this number' : 'these numbers' }}:
+          <b>{{ d.flags.join(', ') }}</b>. {{ d.flags.length === 1 ? "It isn't"
+          : "They aren't" }} in your post, so Gemma may have made {{
+          d.flags.length === 1 ? 'it' : 'them' }} up.
+        </p>
+        } @if (p.firstComment && d.text && post().link) {
+        <div class="comment">
+          <span>First comment</span>
+          <code>{{ p.firstComment(post().link) }}</code>
+          <button
+            class="ghost small"
+            (click)="copy(p.firstComment(post().link), p.id + '-c')"
+          >
+            {{ copied() === p.id + '-c' ? '✓ Copied' : 'Copy' }}
+          </button>
+        </div>
+        }
+
+        <div class="row-between foot">
+          <span class="tip">{{ p.tip }}</span>
+          <div class="row">
+            @if (d.text) {
+            <button class="small" (click)="copy(d.text, p.id)">
+              {{ copied() === p.id ? '✓ Copied' : 'Copy' }}
+            </button>
+            }
+            <button
+              class="ghost small"
+              [disabled]="running() || ai.state() !== 'ready' || words() < 40"
+              (click)="again(p)"
+            >
+              ↻ {{ d.text ? 'Rewrite' : 'Write' }}
+            </button>
+          </div>
+        </div>
+      </article>
+      } } @if (!picked().size) {
+      <p class="muted center">Pick at least one place to share.</p>
+      }
+    </section>
+  </div>
+
+  @if (ai.state() === 'ready') { <ng-container *ngTemplateOutlet="gemma" /> }
+</main>
+
+<footer>
+  Built for the DEV Hacktoberfest Open-Source AI Challenge · Gemma via
+  <a href="https://webllm.mlc.ai" target="_blank" rel="noopener">WebLLM</a>
+  · Your text stays on your device.
+</footer>
+
+<ng-template #gemma>
+  <section class="card gemma">
+    <h2>✨ Gemma, running on your device</h2>
+    @switch (ai.state()) { @case ('unsupported') {
+    <p class="muted">
+      This browser doesn't have WebGPU, so Gemma can't run here. Try Chrome or
+      Edge on a laptop, or Safari on iOS 26 or later.
+    </p>
+    } @case ('ready') {
+    <p>
+      ✓ Ready · <code>{{ ai.modelId() }}</code> · works offline from here on.
+    </p>
+    <div class="row">
+      @for (m of ai.choices(); track m.id) { @if (m.id !== ai.modelId()) {
+      <button
+        class="ghost small"
+        (click)="ai.load(m.id)"
+        [disabled]="running()"
+      >
+        Switch to {{ m.label }}
+      </button>
+      } }
+      <button class="ghost small" (click)="ai.remove()" [disabled]="running()">
+        Remove from device
+      </button>
+    </div>
+    } @case ('downloading') {
+    <p>
+      Downloading… {{ ai.progress() }}%
+      <span class="muted">(one time only)</span>
+    </p>
+    <progress max="100" [value]="ai.progress()"></progress>
+    <p class="muted tiny">{{ ai.status() }}</p>
+    } @case ('loading') {
+    <p>Waking Gemma up… {{ ai.progress() }}%</p>
+    <progress max="100" [value]="ai.progress()"></progress>
+    } @default { @if (ai.state() === 'error') {
+    <p class="muted">
+      Gemma couldn't load. {{ ai.crashed() ? 'Close other tabs and apps to free
+      up memory, then try again.' : '' }}
+    </p>
+    <p class="muted tiny">{{ ai.status() }}</p>
+    } @else {
+    <p class="muted">
+      Pick a model to download once (on Wi-Fi). After that it's cached in your
+      browser, works offline, and nothing you paste is sent anywhere.
+    </p>
+    }
+    <div class="models">
+      @for (m of ai.choices(); track m.id) {
+      <button class="model" (click)="ai.load(m.id)" [disabled]="!online()">
+        <b>{{ m.label }}</b><span>{{ m.size }} · {{ m.note }}</span>
+      </button>
+      }
+    </div>
+    } }
+  </section>
+</ng-template>
